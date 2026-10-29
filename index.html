@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Postcards from my Jungle</title>
+  <style>
+    :root {
+      --glow:#5ef0ff; --pink:#ff7ad9; --ink:#e8f6ff; --muted:#8fb4d9;
+      --tame:#3ddc84; --warn:#ffd23f; --flee:#ff3b3b; --rip:#050505;
+      --bar-h: 64px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; padding-bottom: calc(var(--bar-h) + 20px);
+      color: var(--ink); font-family: Georgia, "Times New Roman", serif;
+      background: linear-gradient(180deg, #0d4a85 0%, #072a57 35%, #031330 70%, #010510 100%);
+      background-attachment: fixed;
+    }
+    header { padding: 26px 18px 6px; text-align: center; }
+    h1 {
+      margin: 0 0 6px; font-size: clamp(1.3rem, 4vw, 2rem); letter-spacing: 4px;
+      color: var(--glow); text-shadow: 0 0 14px rgba(94, 240, 255, .6);
+    }
+    .sub { margin: 0; color: var(--muted); font-style: italic; }
+    .hint { margin: 8px 0 0; color: var(--muted); font-size: .9rem; }
+
+    /* The map */
+    .map {
+      position: relative; width: min(96vw, 1000px); aspect-ratio: 16 / 10; margin: 18px auto 0;
+      border: 2px solid rgba(94, 240, 255, .45); border-radius: 12px; overflow: hidden;
+      background:
+        radial-gradient(ellipse at 30% 25%, rgba(94,240,255,.12), transparent 55%),
+        radial-gradient(ellipse at 75% 70%, rgba(255,122,217,.08), transparent 50%),
+        linear-gradient(180deg, #0b4a86 0%, #06295a 40%, #021231 75%, #01060f 100%);
+      box-shadow: 0 0 40px rgba(94, 240, 255, .18) inset, 0 0 30px rgba(0, 0, 0, .5);
+    }
+    .map::before { /* faint chart grid */
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(94,240,255,.09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(94,240,255,.09) 1px, transparent 1px);
+      background-size: 12.5% 20%;
+    }
+    /* danger stripe on the left edge: green, yellow, red, black */
+    .stripe {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 7px; pointer-events: none;
+      background: linear-gradient(180deg, var(--tame) 0 25%, var(--warn) 25% 45%, var(--flee) 45% 68%, #000 68% 100%);
+    }
+    .zone { position: absolute; left: 16px; font-size: .7rem; letter-spacing: 2px; color: rgba(190,215,240,.75); text-transform: uppercase; pointer-events: none; }
+
+    /* Glittering spheres */
+    .orb {
+      position: absolute; width: clamp(26px, 4.2vw, 40px); height: clamp(26px, 4.2vw, 40px);
+      transform: translate(-50%, -50%); padding: 0; border-radius: 50%; border: none; cursor: pointer;
+      background: radial-gradient(circle at 35% 30%, #fff 0%, #ffd6d6 25%, #ff2d2d 70%);
+      animation: blink 2.6s ease-in-out infinite, drift 7s ease-in-out infinite;
+      animation-delay: var(--d, 0s);
+    }
+    .orb:hover, .orb:focus-visible, .orb.active { outline: 3px solid var(--glow); outline-offset: 4px; }
+    .orb .num { position: absolute; left: 50%; top: 115%; transform: translateX(-50%); font-size: .7rem; color: var(--muted); font-family: inherit; pointer-events: none; }
+    @keyframes blink {
+      0%, 100% { filter: brightness(1.35) saturate(.1); box-shadow: 0 0 14px 5px rgba(255,255,255,.85), 0 0 34px 12px rgba(255,255,255,.35); }
+      50%      { filter: brightness(1) saturate(1.2);   box-shadow: 0 0 14px 5px rgba(255,40,40,.9),  0 0 34px 12px rgba(255,40,40,.4); }
+    }
+    @keyframes drift {
+      0%, 100% { margin-top: 0; margin-left: 0; }
+      50%      { margin-top: -7px; margin-left: 5px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .orb { animation: none; box-shadow: 0 0 14px 5px rgba(255,255,255,.8); } }
+
+    /* Side panel */
+    .panel {
+      position: fixed; top: 0; right: 0; height: calc(100% - var(--bar-h)); width: min(380px, 92vw); padding: 20px 18px 28px;
+      background: rgba(4, 18, 42, .96); border-left: 2px solid var(--glow);
+      box-shadow: -10px 0 40px rgba(0,0,0,.6); overflow-y: auto;
+      transform: translateX(105%); transition: transform .3s ease; z-index: 10;
+    }
+    .panel.open { transform: translateX(0); }
+    .close { float: right; padding: 4px 12px; }
+    .panel img {
+      display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; margin-top: 34px;
+      image-rendering: pixelated; border: 2px solid var(--pink); background: #000;
+    }
+    .phrase { margin: 16px 0 4px; font-size: 1.6rem; font-weight: bold; text-align: center; color: var(--glow); }
+    .tag { text-align: center; color: var(--muted); font-size: .85rem; }
+    .note { min-height: 1.2em; margin: 6px 0 0; text-align: center; font-size: .85rem; color: var(--pink); }
+    .row { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+    button.pill {
+      background: transparent; color: var(--glow); border: 2px solid var(--glow); padding: 10px 18px;
+      font-size: 1rem; border-radius: 24px; cursor: pointer; font-family: inherit;
+    }
+    button.pill:hover, button.pill:focus-visible { background: var(--glow); color: #04142e; outline: none; }
+
+    /* Danger graph */
+    .danger { margin-top: 18px; }
+    .danger h2 { margin: 0 0 8px; font-size: .8rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: normal; }
+    .meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .seg {
+      height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      opacity: .22; transition: opacity .25s, transform .25s; border: 1px solid rgba(255,255,255,.25);
+    }
+    .seg:nth-child(1) { background: var(--tame); }
+    .seg:nth-child(2) { background: var(--warn); }
+    .seg:nth-child(3) { background: var(--flee); }
+    .seg:nth-child(4) { background: var(--rip); border-color: #cfd8e3; }
+    .seg.on { opacity: 1; }
+    .seg.cur { transform: scaleY(1.35); box-shadow: 0 0 14px 2px currentColor; }
+    .seg:nth-child(1).cur { color: var(--tame); }
+    .seg:nth-child(2).cur { color: var(--warn); }
+    .seg:nth-child(3).cur { color: var(--flee); }
+    .seg:nth-child(4).cur { color: #fff; }
+    .seg svg { width: 22px; height: 22px; }
+    .verdict { margin: 12px 0 0; text-align: center; font-size: 1.15rem; font-weight: bold; letter-spacing: 1px; }
+    .verdict svg { width: 26px; height: 26px; vertical-align: -6px; margin-right: 6px; }
+
+    /* Fun-fact bar */
+    .facts {
+      position: fixed; left: 0; right: 0; bottom: 0; height: var(--bar-h); z-index: 20;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 14px;
+      background: rgba(2, 10, 28, .94); border-top: 2px solid var(--pink);
+      box-shadow: 0 -6px 24px rgba(255, 122, 217, .18);
+    }
+    .facts .label { font-size: .65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--pink); }
+    .facts .line { font-size: clamp(.95rem, 2.6vw, 1.25rem); color: var(--glow); font-style: italic; text-align: center; transition: opacity .35s; }
+    .facts .line.out { opacity: 0; }
+
+    @media (max-width: 700px) {
+      .map { aspect-ratio: 3 / 4; }
+      .panel { top: auto; bottom: var(--bar-h); width: 100%; height: 76%; border-left: none; border-top: 2px solid var(--glow); transform: translateY(110%); }
+      .panel.open { transform: translateY(0); }
+      .panel img { width: 52%; margin: 34px auto 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>POSTCARDS FROM MY JUNGLE</h1>
+    <p class="sub">Aquatic specimens of an unknown world</p>
+    <p class="hint">Sixteen lights drift in the dark. The deeper you go, the more dangerous it gets. Click one to meet its specimen.</p>
+  </header>
+
+  <div class="map" id="map" role="group" aria-label="Map of sixteen aquatic specimens">
+    <div class="stripe"></div>
+    <span class="zone" style="top:1.5%">Shallows</span>
+    <span class="zone" style="top:25.5%">Twilight zone</span>
+    <span class="zone" style="top:45.5%">Midnight zone</span>
+    <span class="zone" style="top:68.5%">The abyss</span>
+  </div>
+
+  <aside class="panel" id="panel" aria-label="Aquatic specimen details" aria-hidden="true">
+    <button class="pill close" id="close" aria-label="Close">&times;</button>
+    <img id="pic" alt="An imagined aquatic specimen">
+    <div class="phrase" id="phrase"></div>
+    <div class="tag" id="tag"></div>
+
+    <div class="danger">
+      <h2>Danger level</h2>
+      <div class="meter" id="meter" aria-hidden="true"></div>
+      <p class="verdict" id="verdict"></p>
+    </div>
+
+    <div class="row"><button class="pill" id="play">&#9654; Listen</button></div>
+    <p class="note" id="note"></p>
+    <audio id="audio" preload="none"></audio>
+  </aside>
+
+  <div class="facts" id="facts" role="status" aria-live="off">
+    <span class="label">Planet fact <span id="factNo">1</span></span>
+    <span class="line" id="factLine"></span>
+  </div>
+
+  <script>
+    // One entry per specimen: map position (x, y in %), image, sound, phrase in the invented language.
+    // Danger depends on depth (y): the deeper the specimen, the more dangerous.
+    const slides = [
+      { x: 10, y: 16, img: "images/jellyfish_07.png", sound: "sounds/sound_00.wav", phrase: "Shlo-mu glim" },
+      { x: 31, y: 9,  img: "images/jellyfish_10.png", sound: "sounds/sound_01.wav", phrase: "Aa-vu mmo-ra" },
+      { x: 55, y: 14, img: "images/jellyfish_11.png", sound: "sounds/sound_02.wav", phrase: "Blu-oo sool" },
+      { x: 80, y: 10, img: "images/jellyfish_14.png", sound: "sounds/sound_03.wav", phrase: "Ve-ssi tek nai" },
+      { x: 21, y: 31, img: "images/jellyfish_15.png", sound: "sounds/sound_04.wav", phrase: "Ooli shlo-mu aa-vu" },
+      { x: 46, y: 34, img: "images/jellyfish_16.png", sound: "sounds/sound_05.wav", phrase: "Zhee, zhee ve-ssi" },
+      { x: 70, y: 28, img: "images/jellyfish_21.png", sound: "sounds/sound_06.wav", phrase: "Uu-na glim pa-lum" },
+      { x: 91, y: 36, img: "images/jellyfish_24.png", sound: "sounds/sound_07.wav", phrase: "Kell ren shlo-mu" },
+      { x: 14, y: 57, img: "images/jellyfish_31.png", sound: "sounds/sound_08.wav", phrase: "Aa-vu blu-oo vo-hh" },
+      { x: 33, y: 56, img: "images/jellyfish_32.png", sound: "sounds/sound_09.wav", phrase: "Mmo-ra mmo-ra kell" },
+      { x: 58, y: 52, img: "images/jellyfish_35.png", sound: "sounds/sound_10.wav", phrase: "Nai-ooli pa-lum" },
+      { x: 83, y: 60, img: "images/jellyfish_36.png", sound: "sounds/sound_11.wav", phrase: "Uu-na ve-ssi ren" },
+      { x: 18, y: 76, img: "images/jellyfish_40.png", sound: "sounds/sound_12.wav", phrase: "Glim-sool aa-vu" },
+      { x: 42, y: 80, img: "images/jellyfish_42.png", sound: "sounds/sound_13.wav", phrase: "Tek ooli, tek glim" },
+      { x: 67, y: 77, img: "images/jellyfish_46.png", sound: "sounds/sound_14.wav", phrase: "Vo-hh blu-oo mmo-ra" },
+      { x: 90, y: 84, img: "images/jellyfish_47.png", sound: "sounds/sound_15.wav", phrase: "Shlo-mu, shlo-mu, sool" }
+    ];
+
+    // Fun facts about the planet, written only in the invented language.
+    const facts = [
+      "Ooli ren shlo-mu, uu-na glim pa-lum nai.",
+      "Blu-oo sool aa-vu, vo-hh kell uu-na mmo-ra.",
+      "Ve-ssi zhee, zhee ve-ssi, tek nai blu-oo.",
+      "Glim-sool pa-lum, ren ooli kell shlo-mu.",
+      "Uu-na aa-vu mmo-ra, nai-ooli vo-hh sool.",
+      "Tek glim, tek ooli, ve-ssi uu-na pa-lum.",
+      "Kell kell ren, blu-oo shlo-mu glim.",
+      "Mmo-ra sool, mmo-ra nai, vo-hh zhee.",
+      "Pa-lum ooli aa-vu shlo-mu, glim ren sool.",
+      "Zhee blu-oo, blu-oo zhee, uu-na vo-hh ve-ssi tek."
+    ];
+
+    const levels = [
+      { name: "Tame",           color: "var(--tame)" },
+      { name: "Do not provoke", color: "var(--warn)" },
+      { name: "Flee at sight",  color: "var(--flee)" },
+      { name: "RIP",            color: "#ffffff" }
+    ];
+    function dangerOf(y) { return y < 25 ? 0 : y < 45 ? 1 : y < 68 ? 2 : 3; }
+
+    const SKULL = '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#f2f2f2" d="M32 5C17 5 8 15 8 29c0 8 4 14 10 17v9h6v-5h4v5h6v-5h4v5h6v-9c6-3 10-9 10-17C54 15 47 5 32 5z"/><circle cx="22" cy="30" r="6.5" fill="#000"/><circle cx="42" cy="30" r="6.5" fill="#000"/><path d="M32 38l-4.5 8h9z" fill="#000"/></svg>';
+
+    const map = document.getElementById("map");
+    const panel = document.getElementById("panel");
+    const pic = document.getElementById("pic");
+    const phrase = document.getElementById("phrase");
+    const tag = document.getElementById("tag");
+    const note = document.getElementById("note");
+    const audio = document.getElementById("audio");
+    const meter = document.getElementById("meter");
+    const verdict = document.getElementById("verdict");
+    let current = -1;
+
+    // Build the 4-segment danger meter once.
+    for (let k = 0; k < 4; k++) {
+      const seg = document.createElement("div");
+      seg.className = "seg";
+      if (k === 3) seg.innerHTML = SKULL;
+      meter.appendChild(seg);
+    }
+
+    const orbs = slides.map((s, n) => {
+      const b = document.createElement("button");
+      b.className = "orb";
+      b.style.left = s.x + "%";
+      b.style.top = s.y + "%";
+      b.style.setProperty("--d", (-(n * 0.37) % 2.6).toFixed(2) + "s");
+      b.setAttribute("aria-label", "Aquatic specimen " + (n + 1) + ": " + s.phrase);
+      b.innerHTML = '<span class="num">' + (n + 1) + "</span>";
+      b.onclick = () => openPanel(n);
+      map.appendChild(b);
+      return b;
+    });
+
+    function openPanel(n) {
+      current = n;
+      const s = slides[n];
+      const lvl = dangerOf(s.y);
+      audio.pause();
+      pic.src = s.img;
+      phrase.textContent = s.phrase;
+      tag.textContent = "Aquatic specimen " + (n + 1) + " of " + slides.length;
+      note.textContent = "";
+      audio.src = s.sound;
+
+      [...meter.children].forEach((seg, k) => {
+        seg.classList.toggle("on", k <= lvl);
+        seg.classList.toggle("cur", k === lvl);
+      });
+      verdict.innerHTML = (lvl === 3 ? SKULL : "") + levels[lvl].name;
+      verdict.style.color = levels[lvl].color;
+
+      orbs.forEach((o, k) => o.classList.toggle("active", k === n));
+      panel.classList.add("open");
+      panel.setAttribute("aria-hidden", "false");
+    }
+    function closePanel() {
+      audio.pause();
+      panel.classList.remove("open");
+      panel.setAttribute("aria-hidden", "true");
+      orbs.forEach((o) => o.classList.remove("active"));
+      if (current >= 0) orbs[current].focus();
+    }
+
+    document.getElementById("close").onclick = closePanel;
+    document.getElementById("play").onclick = () => {
+      note.textContent = "";
+      audio.currentTime = 0;
+      audio.play().catch(() => { note.textContent = "Sound not available yet."; });
+    };
+    audio.addEventListener("error", () => { note.textContent = "Sound not available yet."; });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && panel.classList.contains("open")) closePanel();
+    });
+
+    // Planet facts: a new one every 4 seconds, with a short fade.
+    const factLine = document.getElementById("factLine");
+    const factNo = document.getElementById("factNo");
+    let f = 0;
+    function showFact() {
+      factLine.textContent = facts[f];
+      factNo.textContent = f + 1;
+    }
+    showFact();
+    setInterval(() => {
+      factLine.classList.add("out");
+      setTimeout(() => {
+        f = (f + 1) % facts.length;
+        showFact();
+        factLine.classList.remove("out");
+      }, 350);
+    }, 4000);
+  </script>
+</body>
+</html>
